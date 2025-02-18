@@ -12,7 +12,7 @@ export default function RootLayout() {
   );
 }
 
-function LayoutWithSession() {
+function LayoutWithSession() { 
   const { session } = useSession();
 
   return (
@@ -30,6 +30,7 @@ function LayoutWithSession() {
         <Tabs.Screen
           name="index"
           options={{
+            title: 'Film you page',
             tabBarIcon: ({ focused }) => (
               <Ionicons name="home" size={28} color={focused ? 'white' : 'gray'} />
             ),

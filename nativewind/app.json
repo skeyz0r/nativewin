@@ -34,10 +34,9 @@
         }
       ],
       [
-        "expo-video",
+        "expo-font",
         {
-          "supportsBackgroundPlayback": true,
-          "supportsPictureInPicture": true
+          "fonts": ["./assets/fonts/Montserrat-SemiBold.otf", "./assets/fonts/Raleway-Regular.ttf"]
         }
       ]
     ],
