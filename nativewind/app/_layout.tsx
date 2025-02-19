@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { SessionProvider, useSession } from '@/context/SessionContext';
-import { View, StyleSheet } from 'react-native'; // Import ImageBackground
+import { View } from 'react-native'; // Import ImageBackground
 import { Ionicons, FontAwesome5, Feather } from '@expo/vector-icons';
 import '@/global.css'
 
@@ -30,6 +30,7 @@ function LayoutWithSession() {
         <Tabs.Screen
           name="index"
           options={{
+            headerShown: false,
             title: 'Film you page',
             tabBarIcon: ({ focused }) => (
               <Ionicons name="home" size={28} color={focused ? 'white' : 'gray'} />
@@ -67,7 +68,7 @@ function LayoutWithSession() {
           options={
             session?.user
               ? {
-                  title: '',
+                  title: 'Profile',
                   headerShown: false,
                   tabBarIcon: ({ focused }) => (
                     <FontAwesome5 name="user" size={24} color={focused ? 'white' : 'gray'} />
@@ -85,9 +86,3 @@ function LayoutWithSession() {
   );
 }
 
-// Styles for the background
-const styles = StyleSheet.create({
-  background: {
-    flex: 1, // Ensure the background covers the entire screen
-  },
-});

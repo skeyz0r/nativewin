@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ActivityIndicator, Dimensions } from "react-native";
 import YoutubeIframe from 'react-native-youtube-iframe';
 
-export default function Tmdb({ item, play }: { item: string, play:boolean }) {
+export default function Tmdb({ item, play }: { item: string, play: boolean }) {
   const [videoLoading, setVideoLoading] = useState(true);
 
   return (
@@ -12,7 +12,7 @@ export default function Tmdb({ item, play }: { item: string, play:boolean }) {
         height={230}
         width={Dimensions.get('window').width}
         videoId={item}
-        play={play}
+        play={play} 
         onReady={() => setVideoLoading(false)}
         onError={(e) => console.error("YouTube Iframe error", e)}
       />
