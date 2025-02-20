@@ -7,7 +7,7 @@ export default function Tmdb({ item, play }: { item: string, play: boolean }) {
 
   return (
     <>
-      {videoLoading && <ActivityIndicator size="large" color="white" />}
+      {videoLoading && <ActivityIndicator className="absolute top-0 left-0 right-0 bottom-[12%]" size="large" color="white" />}
       <YoutubeIframe
         height={230}
         width={Dimensions.get('window').width}

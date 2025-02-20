@@ -1,5 +1,5 @@
 import { View, FlatList, Dimensions, Text, ActivityIndicator, Pressable, Alert, Button } from 'react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Tmdb from './Tmdb';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -20,11 +20,14 @@ interface Movie {
     saved: true | false;
     liked: true | false | null;
     type:string;
+    genreIds: number[];
     trailer: string | null;
   }
   
 
 const TMDB_API_KEY = Constants.expoConfig?.extra?.tmdbTokenKey;
+
+
 
 
 const getMovieTrailer = async (movieId: number, type:string) => {
@@ -60,17 +63,50 @@ async function getLikes() {
 }
 
 
-export default function List({ session, fyp, page, setPage, movies, setMovies }: 
-    { session: Session, fyp:string, page:number, setPage:any, movies:Movie[], setMovies:any }) {
+export default function List({ session, fyp, page, setPage, movies, setMovies, trend }: 
+    { session: Session, fyp:string, page:number, setPage:any, movies:Movie[], setMovies:any, trend:string }) {
   const [visibleMovieIds, setVisibleMovieIds] = useState<number[]>([]);
   const [desc, setDesc] = useState(false);
   const [loading, setLoading] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const [playingMovieId, setPlayingMovieId] = useState<number | null>(null);
-    const [oldId, setOld] = useState(['0', '0', '0'])
+
+  const [genre, setGenre] = useState<{ movies: { id: number; name: string }[]; tv: { id: number; name: string }[] }>({
+    movies: [],
+    tv: [],
+  });
 
   const prevPage = useRef(page);
   const prevFyp = useRef(fyp);
+
+  const findNameById = (id: number) => {
+    for (const key in genre) {
+      const item = genre[key as keyof typeof genre].find(item => item.id === id);
+      if (item) return item.name;
+    }
+    return null; // Not found
+  };
+
+
+  async function getGenre()
+  {
+    const options = {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNTg5ZjcxZmY0NWU0ODFiYzJiOWZjYjhkOGI5MDhjNiIsIm5iZiI6MTczOTQ4MzM3NC4wLCJzdWIiOiI2N2FlNjhlZGQ2M2U5ZGVlZWEzNzA2ZTEiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.eWLH2jZ5yKTTneFkkAXMFGPg-XlgSRh-QQS6B4qn8nM'
+      }
+    };
+    
+    const movieData = await fetch('https://api.themoviedb.org/3/genre/movie/list?language=en', options);
+    const movieResponse = await movieData.json();
+
+    const tvData = await fetch('https://api.themoviedb.org/3/genre/tv/list?language=en' ,options)   
+    const tvResponse = await tvData.json()
+
+    setGenre({movies:movieResponse.genres, tv: tvResponse.genres})
+  }
+
 
   async function updateLikesDislikes(id: string, action: 'like' | 'dislike' | 'save') {
     if (!session.user.id) {
@@ -162,8 +198,8 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
 
   const getMovies = async (page: number) => {
     try {
-        const url =`https://api.themoviedb.org/3/${fyp === 'all' ? 'trending' : fyp}/${fyp === 'all' ? 'all' : 'popular'}${fyp === 'all' ? '/day' : ''}?page=${page}`
-   const response = await fetch(url, {
+        const url =`https://api.themoviedb.org/3/${trend === 'trending' ? 'trending' : fyp}/${trend === 'trending' ? fyp : trend}${trend === 'trending' ? '/day' : ''}?page=${page}`
+        const response = await fetch(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${TMDB_API_KEY}`,
@@ -178,12 +214,17 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
     }
   };
   
+
   
   const loadMoreMovies = () => {
     if (!loading) {
       setPage((prevPage: number) => prevPage + 1);
     }
   };
+
+  useEffect(()=>{
+    getGenre();
+  },[])
   
   useEffect(() => {
     const fetchMoviesWithTrailers = async () => {
@@ -203,6 +244,7 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
                   date: movie.release_date,
                   overview: movie.overview,
                   lang: movie.original_language,
+                  genreIds: movie.genre_ids,
                   type: movie.media_type ||fyp,
                   liked:
                     liked[0]?.likes?.includes(movie.id.toString()) ? true :
@@ -224,8 +266,8 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
   
         prevPage.current = page;
         prevFyp.current = fyp;
-  
-        setLoading(false);
+        setLoading(false); 
+
       } catch (error) {
         console.error(error);
         setLoading(false); 
@@ -233,7 +275,10 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
     };
   
     fetchMoviesWithTrailers();
-  }, [page, fyp]);
+  }, [page, fyp, trend]);
+  
+
+
   
 
 
@@ -256,17 +301,25 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
   }
 
   const onViewableItemsChanged = ({ viewableItems }: { viewableItems: any[] }) => {
-    if (viewableItems.length > 0) {
-        setPlayingMovieId(viewableItems[0].item.id); 
-      }
-    const visibleIds = viewableItems.map(item => item.item.id);
-    setVisibleMovieIds(visibleIds);
-      console.log(viewableItems[viewableItems.length - 1])
+    if (viewableItems.length === 0) return;
+  
+    const firstVisibleItem = viewableItems[0]?.item.id;
+  
+    setVisibleMovieIds(viewableItems.map(item => item.item.id));
+  
+    // Auto-play only the first visible item and stop others
+    if (firstVisibleItem !== playingMovieId) {
+      setPlayingMovieId(firstVisibleItem);
+    }
+  
     setDesc(false);
-        
   };
 
-  const renderItem = ({ item }: { item: Movie }) => (
+
+
+  const RenderItem = memo(({item}: {item:Movie}) => {
+
+return(
     <View key={item.id} className="flex-1 transition-all" style={{ height: Dimensions.get('window').height * .8 }}>
       <Text className="text-white font-semibold mt-8 ml-4">{item.date}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10 }}>
@@ -286,6 +339,15 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
         </View>
         <CountryFlag isoCode={item.lang === 'en' ? 'gb' : item.lang === 'te' || item.lang === 'ta' ? 'in' : item.lang === 'zh' ? 'cn' : item.lang} size={20} />
       </View>
+      <Text className='text-white'>
+        {
+            item.genreIds.map((data:number, key:number)=>{
+                return(
+                    findNameById(data)
+                )
+            })
+        }
+      </Text>
       <Text
         style={{ fontFamily: 'Montserrat-SemiBold' }}
         className={`text-white ml-7 mb-7 ${item.title && item.title.length > 23 ? 'text-xl' : 'text-3xl'}`}>
@@ -314,26 +376,30 @@ export default function List({ session, fyp, page, setPage, movies, setMovies }:
 
       </View>
       <Pressable onPress={() => {setDesc(!desc); !desc ? setPlayingMovieId(-3) : setPlayingMovieId(item.id)}} 
-       className={`${!desc ? 'h-[100px]' : 'flex-1 absolute pt-7 border border-white'} flex-col items-end bg-black`}>
-        <Text style={{ fontFamily: 'Raleway-Regular' }} className={`text-white px-4 leading-7`}>
+       className={`${!desc ? 'h-[100px]' :
+        'h-[90%]  w-full absolute pt-7 border bottom-0 border-yellow-400'} flex-col items-end bg-black`}>
+        <Text style={{ fontFamily: 'Raleway-Regular' }} 
+        className={`text-white  ${desc ? 'px-2 text-2xl' : 'px-4  text-lg'} leading-7`}>
+
           {item.overview.length < 200 || desc ? item.overview : item.overview.substring(0, 150) + '...'}
         </Text>
         <Text className='text-gray-200 my-2 text-lg mr-3'>{`${desc ? 'Less' : 'More'}`}</Text>
       </Pressable>
         </View>
-  );
+)
+    });
 
   return (
    <View className="flex-1 bg-black">
     {loading ? (
-      <ActivityIndicator size="large" color="white" />
+      <ActivityIndicator className='absolute bottom-0 top-0 left-0 right-0' size="large" color="white" />
     ) : (
       <FlatList
         ref={flatListRef}
         pagingEnabled
         data={movies}
-        renderItem={renderItem}
-        keyExtractor={(item) => `${fyp}-${item.id}`} // Include fyp in the keyExtractor
+        renderItem={({ item }) => <RenderItem item={item} />}
+        keyExtractor={(item) => item.id.toString()} 
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
         onEndReached={loadMoreMovies}
