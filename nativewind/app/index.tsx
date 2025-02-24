@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import List from "@/components/Home/FlatList";
-import { useSession } from '@/context/SessionContext';
 import { Pressable, Text, View } from 'react-native';
 import { Button } from 'react-native';
 
@@ -22,7 +21,6 @@ interface Movie {
 
 export default function App() {
  
-  const { session } = useSession();
 const [type, setType] = useState('all')
   const [page, setPage] = useState(Math.floor(Math.random() * 301));
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -94,7 +92,7 @@ const [type, setType] = useState('all')
 
   </View>
 
-     <List trend={trend} movies={movies} setMovies={setMovies} session={session!} page={page} setPage={setPage} fyp={type}/>
+     <List trend={trend} movies={movies} setMovies={setMovies} page={page} setPage={setPage} fyp={type}/>
     </>
   );
 }

@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { SessionProvider, useSession } from '@/context/SessionContext';
 import { View } from 'react-native'; // Import ImageBackground
 import { Ionicons, FontAwesome5, Feather } from '@expo/vector-icons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import '@/global.css'
 
 export default function RootLayout() {
@@ -13,6 +14,9 @@ export default function RootLayout() {
 }
 
 function LayoutWithSession() { 
+
+
+  
   const { session } = useSession();
 
   return (
@@ -39,7 +43,8 @@ function LayoutWithSession() {
         />
         <Tabs.Screen
           name="search/index"
-          options={{
+          options={{            title: "Find your Hive",
+
             tabBarIcon: ({ focused }) => (
               <FontAwesome5 name="search" size={24} color={focused ? 'white' : 'gray'} />
             ),
@@ -50,7 +55,7 @@ function LayoutWithSession() {
           options={{
             tabBarIcon: () => (
               <View className="bg-white w-[55px] h-[35px] rounded-lg flex items-center justify-center">
-                <Feather name="plus" size={24} color="black" />
+<FontAwesome name="forumbee" size={24} color="black" />
               </View>
             ),
           }}

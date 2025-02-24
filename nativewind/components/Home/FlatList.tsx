@@ -1,5 +1,5 @@
-import { View, FlatList, Dimensions, Text, ActivityIndicator, Pressable, Alert, Button } from 'react-native';
-import React, { memo, useEffect, useRef, useState } from 'react';
+import { View, FlatList, Dimensions, Text, ActivityIndicator, Pressable, Alert } from 'react-native';
+import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Tmdb from './Tmdb';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -8,6 +8,7 @@ import Constants from "expo-constants";
 import { MaterialIcons } from '@expo/vector-icons';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { useSession } from '@/context/SessionContext';
 
 interface Movie {
     id: number;
@@ -63,53 +64,24 @@ async function getLikes() {
 }
 
 
-export default function List({ session, fyp, page, setPage, movies, setMovies, trend }: 
-    { session: Session, fyp:string, page:number, setPage:any, movies:Movie[], setMovies:any, trend:string }) {
-  const [visibleMovieIds, setVisibleMovieIds] = useState<number[]>([]);
+export default function List({  fyp, page, setPage, movies, setMovies, trend }: 
+    { fyp:string, page:number, setPage:any, movies:Movie[], setMovies:any, trend:string }) {
   const [desc, setDesc] = useState(false);
   const [loading, setLoading] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const [playingMovieId, setPlayingMovieId] = useState<number | null>(null);
 
-  const [genre, setGenre] = useState<{ movies: { id: number; name: string }[]; tv: { id: number; name: string }[] }>({
-    movies: [],
-    tv: [],
-  });
+  const { session, findNameById } = useSession();
+
 
   const prevPage = useRef(page);
   const prevFyp = useRef(fyp);
 
-  const findNameById = (id: number) => {
-    for (const key in genre) {
-      const item = genre[key as keyof typeof genre].find(item => item.id === id);
-      if (item) return item.name;
-    }
-    return null; // Not found
-  };
 
-
-  async function getGenre()
-  {
-    const options = {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNTg5ZjcxZmY0NWU0ODFiYzJiOWZjYjhkOGI5MDhjNiIsIm5iZiI6MTczOTQ4MzM3NC4wLCJzdWIiOiI2N2FlNjhlZGQ2M2U5ZGVlZWEzNzA2ZTEiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.eWLH2jZ5yKTTneFkkAXMFGPg-XlgSRh-QQS6B4qn8nM'
-      }
-    };
-    
-    const movieData = await fetch('https://api.themoviedb.org/3/genre/movie/list?language=en', options);
-    const movieResponse = await movieData.json();
-
-    const tvData = await fetch('https://api.themoviedb.org/3/genre/tv/list?language=en' ,options)   
-    const tvResponse = await tvData.json()
-
-    setGenre({movies:movieResponse.genres, tv: tvResponse.genres})
-  }
 
 
   async function updateLikesDislikes(id: string, action: 'like' | 'dislike' | 'save') {
-    if (!session.user.id) {
+    if (!session!.user.id) {
       Alert.alert('Error', 'User is not logged in');
       return;
     }
@@ -173,7 +145,7 @@ export default function List({ session, fyp, page, setPage, movies, setMovies, t
       const { error: updateError } = await supabase
         .from('profile')
         .update({ likes: updatedLikes, dislikes: updatedDislikes, saved: updatedSaved })
-        .eq('id', session.user.id);
+        .eq('id', session!.user.id);
   
       if (updateError) {
         Alert.alert('Error', updateError.message);
@@ -222,10 +194,6 @@ export default function List({ session, fyp, page, setPage, movies, setMovies, t
     }
   };
 
-  useEffect(()=>{
-    getGenre();
-  },[])
-  
   useEffect(() => {
     const fetchMoviesWithTrailers = async () => {
       try {
@@ -241,7 +209,7 @@ export default function List({ session, fyp, page, setPage, movies, setMovies, t
                   title: movie.title || movie.name,
                   vote: movie.vote_average,
                   vote_count: movie.vote_count,
-                  date: movie.release_date,
+                  date: movie.release_date || movie.first_air_date,
                   overview: movie.overview,
                   lang: movie.original_language,
                   genreIds: movie.genre_ids,
@@ -304,9 +272,7 @@ export default function List({ session, fyp, page, setPage, movies, setMovies, t
     if (viewableItems.length === 0) return;
   
     const firstVisibleItem = viewableItems[0]?.item.id;
-  
-    setVisibleMovieIds(viewableItems.map(item => item.item.id));
-  
+    
     // Auto-play only the first visible item and stop others
     if (firstVisibleItem !== playingMovieId) {
       setPlayingMovieId(firstVisibleItem);
@@ -339,22 +305,22 @@ return(
         </View>
         <CountryFlag isoCode={item.lang === 'en' ? 'gb' : item.lang === 'te' || item.lang === 'ta' ? 'in' : item.lang === 'zh' ? 'cn' : item.lang} size={20} />
       </View>
-      <Text className='text-white'>
+      <View className='flex-row gap-2'>
         {
             item.genreIds.map((data:number, key:number)=>{
                 return(
-                    findNameById(data)
+                    <Text key={key} className='text-white text-sm'>{findNameById(data)}</Text>
                 )
             })
         }
-      </Text>
+      </View>
       <Text
         style={{ fontFamily: 'Montserrat-SemiBold' }}
         className={`text-white ml-7 mb-7 ${item.title && item.title.length > 23 ? 'text-xl' : 'text-3xl'}`}>
         {item.title} <Text className='text-gray-300 text-sm'>/{item.type}</Text>
       </Text>
 
-      {visibleMovieIds.includes(item.id) ? (
+      {playingMovieId === item.id ? (
         <Tmdb item={item.trailer!} play={playingMovieId === item.id} />
       ) : (
         <ActivityIndicator size="small" color="gray" />
@@ -375,11 +341,11 @@ return(
 </Pressable>
 
       </View>
-      <Pressable onPress={() => {setDesc(!desc); !desc ? setPlayingMovieId(-3) : setPlayingMovieId(item.id)}} 
+      <Pressable onPress={() => {setDesc(!desc)}} 
        className={`${!desc ? 'h-[100px]' :
-        'h-[90%]  w-full absolute pt-7 border bottom-0 border-yellow-400'} flex-col items-end bg-black`}>
+        'h-[90%]  w-full absolute pt-7 border bottom-10 rounded-t-md border-yellow-400'} flex-col items-end bg-black`}>
         <Text style={{ fontFamily: 'Raleway-Regular' }} 
-        className={`text-white  ${desc ? 'px-2 text-2xl' : 'px-4  text-lg'} leading-7`}>
+        className={`text-white  ${desc ? 'px-2 text-xl' : 'px-4  text-lg'} leading-7`}>
 
           {item.overview.length < 200 || desc ? item.overview : item.overview.substring(0, 150) + '...'}
         </Text>
