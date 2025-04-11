@@ -1,0 +1,2 @@
+TRYING OUT REACT NATIVE AND EXPO 
+TIK TOK LIKE APP BUT FOR Movie Trailers using TMDB API and SUPABASE for user auth
